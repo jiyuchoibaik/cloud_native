@@ -1,10 +1,10 @@
-// frontend/src/pages/EditDiaryPage.js
+// frontend/src/pages/EditDiaryPage.js (로직만 남김)
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import EditDiaryForm from '../components/EditDiaryForm'; // ⬅️ 새로 만든 UI 컴포넌트 임포트
 
 function EditDiaryPage() {
-  // 1. URL에서 일기 ID 추출
   const { id } = useParams(); 
   const navigate = useNavigate();
 
@@ -16,15 +16,16 @@ function EditDiaryPage() {
 
   const API_BASE_URL = 'http://localhost:8080/api/diary';
 
-  // 2. 초기 데이터 불러오기 (GET /api/diary/:id)
+  // 2. 초기 데이터 불러오기 로직 (변화 없음)
   useEffect(() => {
+    // ... (기존 useEffect 로직 유지) ...
     const fetchDiary = async () => {
       const token = localStorage.getItem('token');
       if (!token || !id) {
         navigate('/login');
         return;
       }
-
+      // ... (API 호출 및 상태 설정 로직 유지) ...
       try {
         const response = await fetch(`${API_BASE_URL}/${id}`, {
           method: 'GET',
@@ -36,10 +37,9 @@ function EditDiaryPage() {
         if (response.ok) {
           const data = await response.json();
           setDiary(data);
-          setTitle(data.title);     // 폼에 초기값 설정
-          setContent(data.content); // 폼에 초기값 설정
+          setTitle(data.title);
+          setContent(data.content);
         } else if (response.status === 401 || response.status === 403) {
-          // 인증 실패 또는 접근 권한 없음
           localStorage.removeItem('token');
           alert('수정 권한이 없거나 세션이 만료되었습니다.');
           navigate('/login');
@@ -55,7 +55,8 @@ function EditDiaryPage() {
     fetchDiary();
   }, [id, navigate]);
 
-  // 3. 수정된 데이터 저장 (PUT /api/diary/:id)
+
+  // 3. 수정된 데이터 저장 로직 (변화 없음)
   const handleSubmit = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem('token');
@@ -64,7 +65,7 @@ function EditDiaryPage() {
       alert('제목과 내용을 모두 입력해 주세요.');
       return;
     }
-
+    // ... (PUT API 호출 로직 유지) ...
     try {
       const response = await fetch(`${API_BASE_URL}/${id}`, {
         method: 'PUT',
@@ -72,12 +73,11 @@ function EditDiaryPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ title, content }), // 수정된 데이터 전송
+        body: JSON.stringify({ title, content }),
       });
 
       if (response.ok) {
         alert('일기가 성공적으로 수정되었습니다!');
-        // 목록 페이지로 돌아가기
         navigate('/'); 
       } else if (response.status === 401 || response.status === 403) {
         alert('수정 권한이 없습니다.');
@@ -90,47 +90,26 @@ function EditDiaryPage() {
     }
   };
 
+  // 4. 취소 핸들러
+  const handleCancel = () => {
+      navigate('/');
+  };
+
   if (loading) return <div className="loading">일기 정보를 불러오는 중...</div>;
   if (error) return <div className="error">{error}</div>;
   if (!diary) return <div className="error">수정할 일기를 찾을 수 없습니다.</div>;
 
+  // 5. 렌더링: 분리된 폼 컴포넌트에 필요한 데이터와 핸들러를 Props로 전달
   return (
-    <div className="edit-diary-container">
-      <h2>일기 수정하기</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="title">제목</label>
-          <input
-            id="title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="content">내용</label>
-          <textarea
-            id="content"
-            rows="10"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            required
-          ></textarea>
-        </div>
-        
-        {/* 이미지 URL은 현재 수정하지 않는다고 가정합니다. */}
-        {diary.imageUrl && (
-          <div className="current-image">
-            <p>현재 이미지:</p>
-            <img src={`http://localhost:8080${diary.imageUrl}`} alt="Diary Image" style={{ maxWidth: '300px', maxHeight: '300px' }} />
-          </div>
-        )}
-
-        <button type="submit" className="save-button">수정 완료</button>
-        <button type="button" onClick={() => navigate('/')} className="cancel-button">취소</button>
-      </form>
-    </div>
+    <EditDiaryForm
+      title={title}
+      setTitle={setTitle}
+      content={content}
+      setContent={setContent}
+      imageUrl={diary.imageUrl}
+      handleSubmit={handleSubmit}
+      handleCancel={handleCancel}
+    />
   );
 }
 
