@@ -1,0 +1,142 @@
+# docker-compose.yml
+# Docker Compose 파일 (버전 명시는 이제 선택 사항이며, 최신 문법으로 작성됨)
+
+services:
+  # 1. MongoDB (데이터베이스)
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb_container
+    ports:
+      - "27017:27017" # 로컬 27017 -> 컨테이너 27017
+    volumes:
+      - mongodb_data:/data/db # 영속적인 데이터 저장
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    networks:
+      - pet_diary_network
+    restart: always
+
+  # 2. Redis (세션 공유 및 캐시)
+  redis:
+    image: redis:latest
+    container_name: redis_container
+    ports:
+      - "6379:6379" # 로컬 6379 -> 컨테이너 6379
+    command: redis-server --appendonly yes # 데이터 영속성 활성화
+    volumes:
+      - redis_data:/data # 영속적인 데이터 저장
+    networks:
+      - pet_diary_network
+    restart: always
+
+  # 3. 인증 서비스 (Node.js Express)
+  auth-service:
+    build:
+      context: ./backend-auth
+      dockerfile: Dockerfile
+    container_name: auth_service_container
+    ports:
+      - "3001:3001" # 로컬 3001 -> 컨테이너 3001
+    environment:
+      PORT: 3001
+      MONGO_URI: mongodb://mongodb:27017/auth_db # docker network 이름을 사용
+      MONGO_USERNAME: ${MONGO_USERNAME}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 1h
+    networks:
+      - pet_diary_network
+    depends_on:
+      - mongodb
+      - redis
+    restart: always
+
+  # 4. 일기 관리 서비스 (Node.js Express)
+  diary-service:
+    build:
+      context: ./backend-diary
+      dockerfile: Dockerfile
+    container_name: diary_service_container
+    ports:
+      - "3002:3002" # 로컬 3002 -> 컨테이너 3002
+    environment:
+      PORT: 3002
+      MONGO_URI: mongodb://mongodb:27017/diary_db # docker network 이름을 사용
+      MONGO_USERNAME: ${MONGO_USERNAME}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET} # ⬅️ [🌟 중요!] 이 줄을 추가하세요.
+      # AI_SERVICE_URL: http://ai-service:5000 # AI 서비스와 통신용
+    networks:
+      - pet_diary_network
+    depends_on:
+      - mongodb
+      - redis
+      - auth-service # 인증 서비스로부터 JWT 검증 필요할 수 있음
+    restart: always
+
+  # 5. AI 서비스 (Python FastAPI)
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: ai_service_container
+    ports:
+      - "5001:5000" # 로컬 5000 -> 컨테이너 5000
+    environment:
+      PORT: 5000
+      # CV_API_KEY: ${CV_API_KEY} # 실제 API 키는 .env에
+      # HF_API_KEY: ${HF_API_KEY} # Hugging Face API 키
+    networks:
+      - pet_diary_network
+    # AI 서비스는 DB나 Redis에 직접 의존하지 않을 수 있음
+    # depends_on:
+    #   - mongodb
+    #   - redis
+    restart: always
+
+  # 6. 프론트엔드 (React)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend_container
+    environment:
+      NODE_ENV: production # 운영 환경 빌드
+      # REACT_APP_API_URL: http://localhost:80 # Nginx를 통해 백엔드 접근
+    networks:
+      - pet_diary_network
+    #depends_on:
+    #  - nginx # Nginx 뒤에 위치하므로 Nginx에 의존
+
+  # 7. Nginx (리버스 프록시)
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx_container
+    ports:
+      - "80:80"   # HTTP
+      - "443:443" # HTTPS (선택 사항)
+    networks:
+      - pet_diary_network
+    depends_on:
+      - frontend
+      - auth-service
+      - diary-service
+      - ai-service
+    restart: always
+
+# Docker 볼륨 (데이터 영속성)
+volumes:
+  mongodb_data:
+  redis_data:
+
+# Docker 네트워크 (서비스 간 통신)
+networks:
+  pet_diary_network:
+    driver: bridge

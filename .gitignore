@@ -1,0 +1,27 @@
+# Node.js
+node_modules
+.env
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Docker
+.dockerignore
+docker-compose.override.yml # 로컬 개발용 오버라이드 파일
+Dockerfile.bak
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+.vscode/
+
+# Build artifacts
+build/
+dist/

@@ -1,0 +1,17 @@
+{
+  "name": "backend-auth",
+  "version": "1.0.0",
+  "description": "Auth service for Pet Diary App",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.0.0",
+    "redis": "^4.6.5",
+    "jsonwebtoken": "^9.0.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.0.3"
+  }
+}
