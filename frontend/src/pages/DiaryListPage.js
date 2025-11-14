@@ -1,6 +1,6 @@
-// frontend/src/pages/DiaryListPage.js
+// frontend/src/pages/DiaryListPage.js (수정된 최종 코드)
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // useCallback 추가
 import { useNavigate } from 'react-router-dom';
 
 function DiaryListPage() {
@@ -9,56 +9,104 @@ function DiaryListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchDiaries = async () => {
-      const token = localStorage.getItem('token');
+  // 1. 일기 목록 불러오기 (useCallback으로 최적화 및 안정화)
+  // 이 함수는 dependency array에 추가되어야 하므로 useCallback 사용
+  const fetchDiaries = useCallback(async () => {
+    setLoading(true); // 로딩 상태 재설정
+    setError(null);
 
-      // 1. 토큰 검사: 토큰이 없으면 로그인 페이지로 이동
-      if (!token) {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:8080/api/diary/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDiaries(data);
+      } else if (response.status === 401) {
+        localStorage.removeItem('token');
+        alert('세션이 만료되었습니다. 다시 로그인해 주세요.');
         navigate('/login');
-        return;
+      } else {
+        // 서버에서 JSON 응답을 기대
+        const errorData = await response.json(); 
+        setError(errorData.message || '일기 목록을 불러오는 데 실패했습니다.');
       }
-
-      try {
-        // 2. 일기 목록 GET 요청 (인증 헤더 포함)
-        const response = await fetch('http://localhost:8080/api/diary/', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`, // ⬅️ 인증 토큰 첨부
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          // 데이터를 배열 상태에 저장
-          setDiaries(data); 
-        } else if (response.status === 401) {
-          // 3. 인증 실패 시 (토큰 만료 등)
-          localStorage.removeItem('token');
-          alert('세션이 만료되었습니다. 다시 로그인해 주세요.');
-          navigate('/login');
-        } else {
-          const errorData = await response.json();
-          setError(errorData.message || '일기 목록을 불러오는 데 실패했습니다.');
-        }
-      } catch (err) {
-        console.error('API 호출 에러:', err);
-        setError('네트워크 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDiaries();
+    } catch (err) {
+      console.error('API 호출 에러:', err);
+      // '네트워크 오류'는 이제 JSON 파싱 오류나 실제 네트워크 오류를 모두 포괄합니다.
+      setError('서버 연결 또는 처리 중 오류가 발생했습니다.'); 
+    } finally {
+      setLoading(false);
+    }
   }, [navigate]);
 
-  // 4. 로그아웃 기능 (편의를 위해 추가)
+
+  // 2. useEffect: 컴포넌트 마운트 시 목록 로드
+  useEffect(() => {
+    fetchDiaries();
+  }, [fetchDiaries]); // fetchDiaries를 dependency에 추가
+
+
+  // 3. [수정] 버튼 클릭 핸들러: Edit 페이지로 이동 (로직 변경 없음)
+  const handleEdit = (diaryId) => {
+    navigate(`/edit/${diaryId}`); 
+  };
+
+  // 4. [삭제] 버튼 클릭 핸들러: DELETE API 호출 (로직 변경 없음)
+  const handleDelete = async (diaryId) => {
+    if (!window.confirm('정말로 이 일기를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/diary/${diaryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        alert('일기가 성공적으로 삭제되었습니다.');
+        // 🌟 삭제 성공 후 목록을 다시 불러와 화면을 갱신합니다.
+        fetchDiaries(); 
+      } else if (response.status === 401 || response.status === 403) {
+        alert('인증 오류 또는 권한이 없습니다.');
+        navigate('/login');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || '일기 삭제에 실패했습니다.');
+      }
+
+    } catch (error) {
+      console.error('삭제 중 에러 발생:', error);
+      alert('네트워크 오류로 삭제에 실패했습니다.');
+    }
+  };
+
+
+  // 5. 로그아웃 기능 (로직 변경 없음)
   const handleLogout = () => {
     localStorage.removeItem('token');
     alert('로그아웃 되었습니다.');
     navigate('/login');
   };
+
+  // 6. 렌더링 로직 (UI 영역)
 
   // 로딩 중 상태 표시
   if (loading) {
@@ -100,22 +148,34 @@ function DiaryListPage() {
       ) : (
         <div className="diary-grid">
           {diaries.map((diary) => (
-            // 5. 일기 카드 렌더링
             <div key={diary._id || diary.id} className="diary-card">
               {diary.imageUrl && (
-                <img 
-                  // 백엔드에서 '/uploads/...' 형태로 URL을 제공한다고 가정
-                  src={`http://localhost:8080${diary.imageUrl}`} 
-                  alt={diary.title} 
+                <img
+                  src={`http://localhost:8080${diary.imageUrl}`}
+                  alt={diary.title}
                   className="diary-image"
                 />
               )}
               <h3 className="diary-title">{diary.title}</h3>
-              {/* 내용 중 일부만 표시 */}
               <p className="diary-content">{diary.content.substring(0, 100)}...</p>
               <span className="diary-date">
                 {new Date(diary.createdAt).toLocaleDateString()}
               </span>
+
+              <div className="card-actions">
+                <button
+                  onClick={() => handleEdit(diary._id || diary.id)}
+                  className="edit-button"
+                >
+                  수정
+                </button>
+                <button
+                  onClick={() => handleDelete(diary._id || diary.id)}
+                  className="delete-button"
+                >
+                  삭제
+                </button>
+              </div>
             </div>
           ))}
         </div>
