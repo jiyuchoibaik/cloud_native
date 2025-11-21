@@ -20,7 +20,7 @@
 
 ```bash
 # 저장소 클론
-git clone <your-repository-url>
+git clone https://github.com/jiyuchoibaik/cloud_native.git
 cd pet-diary-app
 
 # 환경 변수 파일 생성
@@ -40,7 +40,7 @@ MONGO_PASSWORD=password
 MONGO_URI=mongodb://mongodb:27017/diarydb
 
 # JWT 비밀 키 (인증 서비스) - 강력한 랜덤 문자열 사용 권장
-JWT_SECRET=your_jwt_secret_key_here
+JWT_SECRET="your_jwt_secret_key"
 
 # 다이어리 서비스 포트
 PORT_DIARY=3002
