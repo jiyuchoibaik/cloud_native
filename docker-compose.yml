@@ -33,6 +33,7 @@ services:
     build:
       context: ./backend-auth
       dockerfile: Dockerfile
+    image: choijiyu/cloud_native-auth-service:v1.0 # 🌟 수정됨
     container_name: auth_service_container
     ports:
       - "3001:3001"
@@ -56,6 +57,7 @@ services:
     build:
       context: ./backend-diary
       dockerfile: Dockerfile
+    image: choijiyu/cloud_native-diary-service:v1.0
     container_name: diary_service_container
     ports:
       - "3002:3002"
@@ -86,6 +88,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: choijiyu/cloud_native-frontend:v1.0
     container_name: frontend_container
     # Nginx가 80번 포트를 사용하므로, 프론트엔드 포트는 외부에 노출하지 않습니다.
     networks:
@@ -98,6 +101,7 @@ services:
       context: ./nginx
       dockerfile: Dockerfile
     container_name: nginx_container
+    image: choijiyu/cloud_native-nginx:v1.0
     ports:
       - "8080:80"
       - "443:443"

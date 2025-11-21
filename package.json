@@ -1,0 +1,21 @@
+{
+  "name": "pet-diary-app",
+  "version": "1.0.0",
+  "description": "- **Auth Service**: `choijiyu/cloud_native-auth-service:v1.0` - **Diary Service**: `choijiyu/cloud_native-diary-service:v1.0` - **Frontend**: `choijiyu/cloud_native-frontend:v1.0` - **Nginx**: `choijiyu/cloud_native-nginx:v1.0`",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jiyuchoibaik/pet-diary-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jiyuchoibaik/pet-diary-app/issues"
+  },
+  "homepage": "https://github.com/jiyuchoibaik/pet-diary-app#readme"
+}

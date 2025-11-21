@@ -1,424 +1,358 @@
-# 📊 프로젝트 폴더 구조 분석
+# 🐾 Pet Diary App - Docker 설치 가이드
 
-## 🎯 전체 구조 개요
+## 📦 Docker Hub 이미지 주소
 
-```
-pet-diary-app/
-├── 🔧 docker-compose.yml       (오케스트레이션)
-├── 🔒 .env                      (환경 변수)
-│
-├── 🔀 nginx/                    (역방향 프록시)
-│   └── nginx.conf
-│
-├── ⚛️ frontend/                 (프론트엔드)
-│   ├── Dockerfile
-│   ├── package.json
-│   └── src/
-│       ├── app.js              (메인 앱)
-│       └── pages/              (페이지 컴포넌트)
-│           ├── LoginPage.js
-│           ├── RegisterPage.js
-│           ├── DiaryListPage.js
-│           ├── CreateDiaryPage.js
-│           ├── EditDiaryPage.js
-│           └── PublicFeedPage.js
-│
-├── 🔐 backend-auth/             (인증 서비스 1)
-│   ├── Dockerfile
-│   ├── package.json
-│   ├── index.js                (메인 서버)
-│   └── models/
-│       └── User.js             (사용자 모델)
-│
-├── 🔐 auth-service/             (인증 서비스 2)
-│   ├── Dockerfile
-│   ├── package.json
-│   └── server.js               (메인 서버)
-│
-└── 📝 backend-diary/            (일기 서비스)
-    ├── Dockerfile
-    ├── package.json
-    ├── index.js                (메인 서버)
-    ├── middleware/
-    │   └── authMiddleware.js   (인증 미들웨어)
-    ├── models/
-    │   └── Diary.js            (일기 모델)
-    └── uploads/                (이미지 저장소)
-```
+- **Auth Service**: `choijiyu/cloud_native-auth-service:v1.0`
+- **Diary Service**: `choijiyu/cloud_native-diary-service:v1.0`
+- **Frontend**: `choijiyu/cloud_native-frontend:v1.0`
+- **Nginx**: `choijiyu/cloud_native-nginx:v1.0`
 
 ---
 
-## 🔍 각 계층 상세 분석
+## 🚀 빠른 시작 (Docker Compose 사용)
 
-### 1️⃣ 인프라 계층 (Infrastructure)
+### 1. 사전 요구사항
 
-#### docker-compose.yml
-```yaml
-역할: 모든 컨테이너 오케스트레이션
-- Nginx (포트 80)
-- Frontend (포트 3000)
-- Backend-Auth (포트 4001)
-- Auth-Service (포트 4003)
-- Backend-Diary (포트 4002)
-- AI-Service (포트 5000)
-- MongoDB (포트 27017)
-- Redis (포트 6379)
-```
+- Docker Engine 20.10 이상
+- Docker Compose v2.0 이상
 
-#### .env
+### 2. 프로젝트 클론 및 설정
+
 ```bash
-역할: 환경 변수 중앙 관리
-- MONGO_URI
-- REDIS_HOST
-- JWT_SECRET
-- HF_API_KEY
+# 저장소 클론
+git clone <your-repository-url>
+cd pet-diary-app
+
+# 환경 변수 파일 생성
+cp .env.example .env
+```
+
+### 3. 환경 변수 설정
+
+`.env` 파일을 생성하고 다음 내용을 입력하세요:
+
+```env
+# MongoDB 환경 변수
+MONGO_USERNAME=admin
+MONGO_PASSWORD=password
+
+# MongoDB 연결 URI
+MONGO_URI=mongodb://mongodb:27017/diarydb
+
+# JWT 비밀 키 (인증 서비스) - 강력한 랜덤 문자열 사용 권장
+JWT_SECRET=your_jwt_secret_key_here
+
+# 다이어리 서비스 포트
+PORT_DIARY=3002
+
+# 외부 접근 URL
+BASE_URL=http://localhost:8080
+
+# Redis 호스트
+REDIS_HOST=redis
+```
+
+> ⚠️ **보안 주의**: 운영 환경에서는 반드시 강력한 비밀번호와 JWT 시크릿을 사용하세요!
+
+### 4. 애플리케이션 실행
+
+```bash
+# 백그라운드에서 모든 서비스 시작
+docker-compose up -d
+
+# 로그 확인
+docker-compose logs -f
+
+# 특정 서비스 로그만 보기
+docker-compose logs -f frontend
+```
+
+### 5. 접속하기
+
+애플리케이션이 시작되면 다음 주소로 접속할 수 있습니다:
+
+- **웹 애플리케이션**: http://localhost:8080
+- **Auth Service API**: http://localhost:3001
+- **Diary Service API**: http://localhost:3002
+- **MongoDB**: localhost:27017
+- **Redis**: localhost:6379
+
+---
+
+## 🛑 애플리케이션 중지 및 제거
+
+```bash
+# 서비스 중지
+docker-compose stop
+
+# 서비스 중지 및 컨테이너 제거
+docker-compose down
+
+# 컨테이너, 볼륨, 네트워크 모두 제거
+docker-compose down -v
 ```
 
 ---
 
-### 2️⃣ 프록시 계층 (Proxy Layer)
+## 🔧 수동 설치 (Docker Hub 이미지 직접 사용)
 
-#### nginx/
-```
-📁 nginx/nginx.conf
+Docker Compose 없이 직접 실행하려면:
 
-역할: 역방향 프록시 및 라우팅
-- /              → Frontend (React)
-- /api/auth/    → Backend-Auth
-- /api/auth-alt/→ Auth-Service
-- /api/diary/   → Backend-Diary
-- /api/ai/      → AI-Service
-- /uploads/     → Static Files
+### 1. 네트워크 생성
+
+```bash
+docker network create pet_diary_network
 ```
 
-**라우팅 흐름:**
-```
-Client Request → Nginx (80) → 적절한 서비스로 라우팅
-```
+### 2. MongoDB 실행
 
----
-
-![alt text](image.png)
-
-### 3️⃣ 프론트엔드 계층 (Frontend Layer)
-
-#### frontend/
-```
-📁 frontend/
-├── Dockerfile          (React 컨테이너)
-├── package.json        (의존성 관리)
-└── src/
-    ├── app.js          (메인 애플리케이션)
-    └── pages/          (페이지별 컴포넌트)
+```bash
+docker run -d \
+  --name mongodb_container \
+  --network pet_diary_network \
+  -p 27017:27017 \
+  -e MONGO_INITDB_ROOT_USERNAME=admin \
+  -e MONGO_INITDB_ROOT_PASSWORD=your_password \
+  -v mongodb_data:/data/db \
+  mongo:latest
 ```
 
-**페이지 구조:**
-```javascript
-pages/
-├── LoginPage.js        // 로그인
-├── RegisterPage.js     // 회원가입
-├── DiaryListPage.js    // 일기 목록 (본인 것)
-├── CreateDiaryPage.js  // 일기 작성
-├── EditDiaryPage.js    // 일기 수정
-└── PublicFeedPage.js   // 공개 피드 (모든 사용자)
+### 3. Redis 실행
+
+```bash
+docker run -d \
+  --name redis_container \
+  --network pet_diary_network \
+  -p 6379:6379 \
+  -v redis_data:/data \
+  redis:latest
 ```
 
-**컴포넌트 역할:**
-| 페이지 | API 호출 | 주요 기능 |
-|--------|---------|-----------|
-| LoginPage | POST /api/auth/login | 로그인 → 토큰 저장 |
-| RegisterPage | POST /api/auth/register | 회원가입 |
-| DiaryListPage | GET /api/diary/ | 내 일기 목록 |
-| CreateDiaryPage | POST /api/diary/ | 이미지 업로드 + AI 일기 생성 |
-| EditDiaryPage | PUT /api/diary/:id | 일기 수정 |
-| PublicFeedPage | GET /api/diary/public | 공개 일기 피드 |
+### 4. Auth Service 실행
 
----
-
-### 4️⃣ 백엔드 서비스 계층 (Backend Services)
-
-#### 🔐 backend-auth/ (인증 서비스 1)
-```
-📁 backend-auth/
-├── Dockerfile
-├── package.json
-├── index.js            (메인 서버 파일)
-└── models/
-    └── User.js         (사용자 스키마)
-
-포트: 4001
-엔드포인트:
-- POST /register    (회원가입)
-- POST /login       (로그인)
-- POST /verify      (토큰 검증)
-- POST /logout      (로그아웃)
+```bash
+docker run -d \
+  --name auth_service_container \
+  --network pet_diary_network \
+  -p 3001:3001 \
+  -e PORT=3001 \
+  -e MONGO_URI=mongodb://mongodb_container:27017/auth_db \
+  -e MONGO_USERNAME=admin \
+  -e MONGO_PASSWORD=your_password \
+  -e REDIS_HOST=redis_container \
+  -e REDIS_PORT=6379 \
+  -e JWT_SECRET=your_jwt_secret \
+  choijiyu/cloud_native-auth-service:v1.0
 ```
 
-**User 모델:**
-```javascript
-{
-  _id: ObjectId,
-  username: String,
-  email: String,
-  password: String (hashed),
-  createdAt: Date
-}
+### 5. Diary Service 실행
+
+```bash
+docker run -d \
+  --name diary_service_container \
+  --network pet_diary_network \
+  -p 3002:3002 \
+  -e PORT=3002 \
+  -e MONGO_URI=mongodb://mongodb_container:27017/diary_db \
+  -e MONGO_USERNAME=admin \
+  -e MONGO_PASSWORD=your_password \
+  -e REDIS_HOST=redis_container \
+  -e REDIS_PORT=6379 \
+  -e JWT_SECRET=your_jwt_secret \
+  -v $(pwd)/uploads:/app/uploads \
+  choijiyu/cloud_native-diary-service:v1.0
 ```
 
-#### 🔐 auth-service/ (인증 서비스 2)
-```
-📁 auth-service/
-├── Dockerfile
-├── package.json
-└── server.js           (메인 서버 파일)
+### 6. Frontend 실행
 
-포트: 4003
-역할: Alternative 인증 시스템 (백업/테스트용?)
-엔드포인트: backend-auth와 동일
+```bash
+docker run -d \
+  --name frontend_container \
+  --network pet_diary_network \
+  choijiyu/cloud_native-frontend:v1.0
 ```
 
-**🤔 왜 인증 서비스가 2개?**
-1. **로드 밸런싱**: 트래픽 분산
-2. **A/B 테스트**: 서로 다른 인증 방식 테스트
-3. **백업 시스템**: 하나 다운되면 다른 것 사용
-4. **마이크로서비스 연습**: 서비스 분리 학습
+### 7. Nginx 실행
 
-#### 📝 backend-diary/ (일기 서비스)
-```
-📁 backend-diary/
-├── Dockerfile
-├── package.json
-├── index.js                    (메인 서버)
-├── middleware/
-│   └── authMiddleware.js       (토큰 검증)
-├── models/
-│   └── Diary.js                (일기 스키마)
-└── uploads/                    (이미지 파일 저장)
-
-포트: 4002
-엔드포인트:
-- POST   /           (일기 생성 + AI 분석)
-- GET    /           (내 일기 목록)
-- GET    /public     (공개 일기 피드)
-- GET    /:id        (일기 상세)
-- PUT    /:id        (일기 수정)
-- DELETE /:id        (일기 삭제)
-```
-
-**Diary 모델:**
-```javascript
-{
-  _id: ObjectId,
-  user: ObjectId (ref: User),
-  title: String,
-  content: String,
-  imageUrl: String,
-  aiAnalysis: {
-    species: String,
-    action: String
-  },
-  isPublic: Boolean,
-  createdAt: Date
-}
-```
-
-**authMiddleware.js 역할:**
-```javascript
-1. 요청에서 JWT 토큰 추출
-2. Redis에서 세션 확인
-3. 유효하면 req.user에 사용자 정보 저장
-4. 무효하면 401 에러 반환
+```bash
+docker run -d \
+  --name nginx_container \
+  --network pet_diary_network \
+  -p 8080:80 \
+  -p 443:443 \
+  -v $(pwd)/nginx/nginx.conf:/etc/nginx/nginx.conf \
+  choijiyu/cloud_native-nginx:v1.0
 ```
 
 ---
 
-### 5️⃣ 데이터 계층 (Data Layer)
+## 📝 docker-compose.yml 파일
 
-#### MongoDB
-```
-역할: 주 데이터베이스
-저장 데이터:
-- users 컬렉션 (사용자 정보)
-- diaries 컬렉션 (일기 데이터)
-```
+프로젝트 루트에 다음 파일을 생성하세요:
 
-#### Redis
-```
-역할: 세션 저장소
-저장 데이터:
-- session:{userId} : JWT 토큰
-- TTL: 7일
-```
-
-#### uploads/
-```
-역할: 업로드된 이미지 파일 저장
-경로: backend-diary/uploads/
-접근: http://localhost/uploads/{filename}
-```
-
----
-
-## 🔄 데이터 흐름
-
-### 시나리오 1: 로그인
-```
-Client → Nginx → Backend-Auth
-         ↓
-    Redis (세션 저장)
-         ↓
-    MongoDB (사용자 조회)
-         ↓
-    Client (토큰 받음)
-```
-
-### 시나리오 2: 일기 생성
-```
-Client (이미지 선택) 
-   ↓
-Nginx → Backend-Diary
-   ↓
-authMiddleware (토큰 검증 via Redis)
-   ↓
-AI-Service (이미지 분석)
-   ↓
-Hugging Face API (BLIP + KoGPT-2)
-   ↓
-MongoDB (일기 저장)
-   ↓
-uploads/ (이미지 저장)
-   ↓
-Client (결과 표시)
-```
-
-### 시나리오 3: 공개 피드 조회
-```
-Client → Nginx → Backend-Diary
-         ↓
-    authMiddleware (인증 확인)
-         ↓
-    MongoDB (isPublic: true인 일기들)
-         ↓
-    Client (피드 표시)
-```
-
----
-
-## 📊 서비스 간 통신
-
-```mermaid
-graph LR
-    A[Frontend] -->|API Call| B[Nginx]
-    B -->|Route| C[Backend-Auth]
-    B -->|Route| D[Auth-Service]
-    B -->|Route| E[Backend-Diary]
-    B -->|Route| F[AI-Service]
-    
-    C -->|Query| G[MongoDB]
-    C -->|Session| H[Redis]
-    
-    D -->|Query| G
-    D -->|Session| H
-    
-    E -->|Query| G
-    E -->|Verify| H
-    E -->|Analyze| F
-    
-    F -->|API Call| I[Hugging Face]
-```
-
----
-
-## 🎯 핵심 설계 원칙
-
-### 1. 관심사의 분리 (Separation of Concerns)
-```
-✅ 인증 → backend-auth, auth-service
-✅ 일기 관리 → backend-diary
-✅ AI 분석 → ai-service
-✅ 라우팅 → nginx
-```
-
-### 2. 단일 책임 원칙 (Single Responsibility)
-```
-각 서비스는 하나의 역할만 담당
-- backend-auth: 오직 인증
-- backend-diary: 오직 일기 CRUD
-- ai-service: 오직 AI 분석
-```
-
-### 3. 느슨한 결합 (Loose Coupling)
-```
-서비스들이 독립적으로 동작
-- backend-diary가 다운되어도 auth는 동작
-- ai-service가 느려도 다른 서비스는 정상
-```
-
----
-
-## 🔐 보안 계층
-
-```
-Client Request
-    ↓
-[Nginx] - CORS 설정
-    ↓
-[authMiddleware] - JWT 검증
-    ↓
-[Redis] - 세션 확인
-    ↓
-[Service] - 비즈니스 로직
-    ↓
-[MongoDB] - 데이터 접근
-```
-
----
-
-## 🚀 확장 가능성
-
-### 수평 확장
 ```yaml
-# docker-compose.yml
-backend-diary:
-  replicas: 3  # 인스턴스 3개로 증가
-  
-nginx:
-  # 로드 밸런싱 자동 처리
-```
+services:
+  # 1. MongoDB (데이터베이스)
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb_container
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    networks:
+      - pet_diary_network
+    restart: always
 
-### 새 서비스 추가
-```
-1. 새 디렉토리 생성 (예: backend-comment)
-2. Dockerfile 작성
-3. docker-compose.yml에 추가
-4. nginx.conf에 라우팅 추가
+  # 2. Redis (세션 공유 및 캐시)
+  redis:
+    image: redis:latest
+    container_name: redis_container
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pet_diary_network
+    restart: always
+
+  # 3. 인증 서비스
+  auth-service:
+    image: choijiyu/cloud_native-auth-service:v1.0
+    container_name: auth_service_container
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      MONGO_URI: mongodb://mongodb:27017/auth_db
+      MONGO_USERNAME: ${MONGO_USERNAME}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+    networks:
+      - pet_diary_network
+    depends_on:
+      - mongodb
+      - redis
+    restart: always
+
+  # 4. 일기 관리 서비스
+  diary-service:
+    image: choijiyu/cloud_native-diary-service:v1.0
+    container_name: diary_service_container
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      MONGO_URI: mongodb://mongodb:27017/diary_db
+      MONGO_USERNAME: ${MONGO_USERNAME}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - pet_diary_network
+    depends_on:
+      - mongodb
+      - redis
+      - auth-service
+    restart: always
+
+  # 5. 프론트엔드
+  frontend:
+    image: choijiyu/cloud_native-frontend:v1.0
+    container_name: frontend_container
+    networks:
+      - pet_diary_network
+    restart: always
+
+  # 6. Nginx (리버스 프록시)
+  nginx:
+    image: choijiyu/cloud_native-nginx:v1.0
+    container_name: nginx_container
+    ports:
+      - "8080:80"
+      - "443:443"
+    networks:
+      - pet_diary_network
+    depends_on:
+      - frontend
+      - auth-service
+      - diary-service
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  pet_diary_network:
+    driver: bridge
 ```
 
 ---
 
-## 💡 실전 팁
+## 🔍 문제 해결
 
-### 개발 순서
-```
-1. backend-auth 완성 → 테스트
-2. backend-diary (AI 제외) → 테스트
-3. ai-service 추가 → 통합
-4. frontend 페이지별 개발
-5. 통합 테스트
+### 컨테이너 상태 확인
+
+```bash
+docker-compose ps
 ```
 
-### 디버깅 순서
+### 특정 서비스 재시작
+
+```bash
+docker-compose restart auth-service
 ```
-문제 발생 시:
-1. docker-compose logs [service-name]
-2. 해당 서비스 컨테이너 들어가기
-   docker-compose exec [service] sh
-3. 파일 구조 확인
-   ls -la
-4. 환경 변수 확인
-   env
+
+### 컨테이너 내부 접속
+
+```bash
+docker exec -it auth_service_container sh
+```
+
+### 로그 실시간 확인
+
+```bash
+docker-compose logs -f --tail=100
+```
+
+### 볼륨 확인
+
+```bash
+docker volume ls
 ```
 
 ---
 
-이 구조는 **실제 운영 환경**에서도 사용할 수 있는 탄탄한 마이크로서비스 아키텍처입니다! 🎊
+## ⚠️ 주의사항
+
+1. **환경 변수 보안**: `.env` 파일은 절대 Git에 커밋하지 마세요
+2. **포트 충돌**: 8080, 3001, 3002, 27017, 6379 포트가 사용 중이지 않은지 확인하세요
+3. **볼륨 데이터**: 데이터를 완전히 삭제하려면 `-v` 옵션을 사용하세요
+4. **운영 환경**: 프로덕션 배포 시 강력한 비밀번호와 HTTPS 설정을 사용하세요
+
+---
+
+## 📚 추가 정보
+
+- **프로젝트 구조**: 프로젝트는 마이크로서비스 아키텍처로 구성되어 있습니다
+- **데이터 지속성**: MongoDB와 Redis 데이터는 Docker 볼륨에 저장됩니다
+- **네트워킹**: 모든 서비스는 `pet_diary_network` 브리지 네트워크로 연결됩니다
+
+---
+
+## 💬 지원
+
+문제가 발생하면 GitHub Issues에 문의해주세요.
+
+**Happy Coding! 🎉**
