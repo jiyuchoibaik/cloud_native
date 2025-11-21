@@ -70,8 +70,6 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET}
     volumes:
-      # 🌟 [필수 추가]: 호스트의 ./backend-diary/uploads를 컨테이너 내부의 /app/uploads와 연결
-      # 💡 Dockerfile에서 WORKDIR이 /app/backend-diary라고 가정하거나, 절대 경로 사용
       - ./backend-diary/uploads:/app/uploads
     networks:
       - pet_diary_network
@@ -90,7 +88,6 @@ services:
       dockerfile: Dockerfile
     image: choijiyu/cloud_native-frontend:v1.0
     container_name: frontend_container
-    # Nginx가 80번 포트를 사용하므로, 프론트엔드 포트는 외부에 노출하지 않습니다.
     networks:
       - pet_diary_network
     restart: always
